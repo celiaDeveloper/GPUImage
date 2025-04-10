@@ -26,6 +26,10 @@
 
 @property (assign, nonatomic) NSUInteger aspectRatio;
 
+//XDD: 修复 第一次启动摄像头卡顿，控制台打印不在主线程的警告
+@property (nonatomic) CAEAGLLayer *currentlayer;
+@property (nonatomic) CGRect currentFrame;
+
 // Initialization and teardown
 - (void)commonInit;
 
@@ -44,6 +48,10 @@
 @synthesize sizeInPixels = _sizeInPixels;
 @synthesize fillMode = _fillMode;
 @synthesize enabled;
+
+//XDD: 修复
+@synthesize currentlayer;
+@synthesize currentFrame;
 
 #pragma mark -
 #pragma mark Initialization and teardown
@@ -88,9 +96,15 @@
     inputRotation = kGPUImageNoRotation;
     self.opaque = YES;
     self.hidden = NO;
-    CAEAGLLayer *eaglLayer = (CAEAGLLayer *)self.layer;
-    eaglLayer.opaque = YES;
-    eaglLayer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:NO], kEAGLDrawablePropertyRetainedBacking, kEAGLColorFormatRGBA8, kEAGLDrawablePropertyColorFormat, nil];
+    
+    //XDD: 修复 用下面的代码替换了下面注释掉的那部分代码
+    currentlayer = (CAEAGLLayer *)self.layer;
+    currentlayer.opaque = YES;
+    currentlayer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:NO], kEAGLDrawablePropertyRetainedBacking, kEAGLColorFormatRGBA8, kEAGLDrawablePropertyColorFormat, nil];
+    
+//    CAEAGLLayer *eaglLayer = (CAEAGLLayer *)self.layer;
+//    eaglLayer.opaque = YES;
+//    eaglLayer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:NO], kEAGLDrawablePropertyRetainedBacking, kEAGLColorFormatRGBA8, kEAGLDrawablePropertyColorFormat, nil];
 
     self.enabled = YES;
     
@@ -132,6 +146,8 @@
 
 - (void)layoutSubviews {
     [super layoutSubviews];
+    //XDD: 修复
+    self.currentFrame = self.bounds;
     
     // The frame buffer needs to be trashed and re-created when the view size changes.
     if (!CGSizeEqualToSize(self.bounds.size, boundsSizeAtFrameBufferEpoch) &&
@@ -187,8 +203,10 @@
 	
     __unused GLuint framebufferCreationStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     NSAssert(framebufferCreationStatus == GL_FRAMEBUFFER_COMPLETE, @"Failure with display framebuffer generation for display of size: %f, %f", self.bounds.size.width, self.bounds.size.height);
-    boundsSizeAtFrameBufferEpoch = self.bounds.size;
-
+    
+    //XDD: 修复
+    boundsSizeAtFrameBufferEpoch = self.currentFrame.size;
+//    boundsSizeAtFrameBufferEpoch = self.bounds.size;
     [self recalculateViewGeometry];
 }
 
@@ -235,12 +253,16 @@
     runSynchronouslyOnVideoProcessingQueue(^{
         CGFloat heightScaling, widthScaling;
         
-        CGSize currentViewSize = self.bounds.size;
+        //XDD: 修复
+        CGSize currentViewSize = self.currentFrame.size;
+//        CGSize currentViewSize = self.bounds.size;
         
         //    CGFloat imageAspectRatio = inputImageSize.width / inputImageSize.height;
         //    CGFloat viewAspectRatio = currentViewSize.width / currentViewSize.height;
         
-        CGRect insetRect = AVMakeRectWithAspectRatioInsideRect(inputImageSize, self.bounds);
+        //XDD: 修复
+        CGRect insetRect = AVMakeRectWithAspectRatioInsideRect(inputImageSize, self.currentFrame);
+//        CGRect insetRect = AVMakeRectWithAspectRatioInsideRect(inputImageSize, self.bounds);
         
         switch(_fillMode)
         {
